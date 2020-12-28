@@ -17,5 +17,9 @@ def clean_key_folder(my_folder_path: str) -> None:
 
 
 def get_uuid(key_file: str) -> str:
-    keystore = Keystore.from_json(key_file)
+    keystore = Keystore.from_file(key_file)
     return keystore.uuid
+
+
+def get_permissions(path: str, file_name: str) -> str:
+    return oct(os.stat(os.path.join(path, file_name)).st_mode & 0o777)

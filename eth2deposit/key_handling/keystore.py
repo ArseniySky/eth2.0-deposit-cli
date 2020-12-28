@@ -5,6 +5,7 @@ from dataclasses import (
     field as dataclass_field
 )
 import json
+import os
 from py_ecc.bls import G2ProofOfPossession as bls
 from secrets import randbits
 from typing import Any, Dict, Union
@@ -90,17 +91,17 @@ class Keystore(BytesDataclass):
     def kdf(self, **kwargs: Any) -> bytes:
         return scrypt(**kwargs) if 'scrypt' in self.crypto.kdf.function else PBKDF2(**kwargs)
 
-    def save(self, file: str) -> None:
+    def save(self, filefolder: str) -> None:
         """
         Save self as a JSON keystore.
         """
-        with open(file, 'w') as f:
+        with open(filefolder, 'w') as f:
             f.write(self.as_json())
+        if os.name == 'posix':
+            os.chmod(filefolder, int('440', 8))  # Read for owner & group
 
     @classmethod
-    def from_json(cls, path: str) -> 'Keystore':
-        with open(path, 'r') as f:
-            json_dict = json.load(f)
+    def from_json(cls, json_dict: Dict[Any, Any]) -> 'Keystore':
         crypto = KeystoreCrypto.from_json(json_dict['crypto'])
         path = json_dict['path']
         uuid = json_dict['uuid']
@@ -108,6 +109,11 @@ class Keystore(BytesDataclass):
         description = json_dict.get('description', '')
         pubkey = json_dict.get('pubkey', '')
         return cls(crypto=crypto, description=description, pubkey=pubkey, path=path, uuid=uuid, version=version)
+
+    @classmethod
+    def from_file(cls, path: str) -> 'Keystore':
+        with open(path, 'r') as f:
+            return cls.from_json(json.load(f))
 
     @staticmethod
     def _process_password(password: str) -> bytes:
